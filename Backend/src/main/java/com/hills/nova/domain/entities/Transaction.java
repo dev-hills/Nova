@@ -42,11 +42,11 @@ public class Transaction {
     @Column(name = "status", nullable = false)
     private TransactionStatus status = TransactionStatus.PENDING;
 
-//    @Column(name = "external_reference", length = 100)
-//    private String externalReference;
-
-//    @Column(name = "channel", length = 50)
-//    private String channel = "MOBILE_APP";
+//        @Column(name = "external_reference", length = 100)
+//        private String externalReference;
+//
+//        @Column(name = "channel", length = 50)
+//        private String channel = "MOBILE_APP";
 
     @Column(name = "failure_reason", length = 500)
     private String failureReason;

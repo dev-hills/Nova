@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to Nova</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            color: #4A90E2;
+            margin-bottom: 10px;
+        }
+        .welcome-message {
+            background: linear-gradient(135deg, #4A90E2 0%, #357ABD 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .features {
+            margin: 25px 0;
+        }
+        .feature {
+            display: flex;
+            align-items: center;
+            margin: 15px 0;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+        .feature-icon {
+            width: 40px;
+            height: 40px;
+            background-color: #4A90E2;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            margin-right: 15px;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            font-size: 14px;
+            color: #666;
+        }
+        .greeting {
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <div class="logo" th:text="${appName}">Nova</div>
+    </div>
+
+    <div class="welcome-message">
+        <h1>🎉 Welcome Aboard!</h1>
+        <p>Your account has been successfully verified</p>
+    </div>
+
+    <div class="greeting">
+        Hello <strong th:text="${firstName}">User</strong>,
+    </div>
+
+    <p>Congratulations! Your account verification is complete and you're now part of the <span th:text="${appName}">Nova</span> community.</p>
+
+    <div class="features">
+        <div class="feature">
+            <div class="feature-icon">✓</div>
+            <div>
+                <strong>Secure Account</strong><br>
+                Your account is protected with industry-standard security
+            </div>
+        </div>
+        <div class="feature">
+            <div class="feature-icon">🚀</div>
+            <div>
+                <strong>Get Started</strong><br>
+                Explore all the features and make the most of your account
+            </div>
+        </div>
+        <div class="feature">
+            <div class="feature-icon">🛡️</div>
+            <div>
+                <strong>Privacy First</strong><br>
+                We respect your privacy and keep your data secure
+            </div>
+        </div>
+    </div>
+
+    <p>If you have any questions or need assistance getting started, don't hesitate to reach out to our support team.</p>
+
+    <div class="footer">
+        <p>Welcome to the family!<br>
+            The <span th:text="${appName}">Nova</span> Team</p>
+        <p style="font-size: 12px; margin-top: 20px;">
+            This is an automated email. Please do not reply to this email.
+        </p>
+    </div>
+</div>
+</body>
+</html>

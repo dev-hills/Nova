@@ -6,9 +6,25 @@ services:
     restart: always
     environment:
       POSTGRES_PASSWORD: changemeinprod!
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
 
   adminer:
     image: adminer:latest
     restart: always
     ports:
       - "8888:8080"
+
+  redis:
+    image: redis:7-alpine
+    container_name: nova-redis
+    ports:
+      - "6379:6379"
+    restart: always
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+
+volumes:
+  postgres_data:
+  redis_data:
