@@ -10,11 +10,14 @@ import com.hills.nova.services.OtpService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.SecureRandom;
+import java.time.Duration;
 import java.util.Map;
 import java.util.UUID;
 
@@ -27,6 +30,9 @@ public class AuthController {
     private final OtpService otpService;
     private final EmailService emailService;
     private final UserRepository userRepository;
+    private static final SecureRandom secureRandom = new SecureRandom();
+    private final RedisTemplate<String, Object> redisTemplate;
+    private static final Duration OTP_TTL = Duration.ofMinutes(30);
 
     @PostMapping(path = "/sign-up")
     public ResponseEntity<SignupResponseDto> signUp(@Valid @RequestBody SignupRequestDto signupRequestDto) {
@@ -78,7 +84,7 @@ public class AuthController {
                 () -> new RuntimeException("User not found")
         );
 
-        if (!otpService.canResendOtp(id)) {
+        if (otpService.canResendOtp(id)) {
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                     .body(Map.of("message", "Please wait before requesting a new OTP"));
         }
@@ -146,6 +152,33 @@ public class AuthController {
                 .build();
 
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping(path = "/initiate-password-reset/{id}")
+    public ResponseEntity<?> initiatePasswordReset(@PathVariable UUID id){
+        User user = userRepository.findById(id).orElseThrow(
+                () -> new RuntimeException("User not found")
+        );
+
+        String otp = String.format("%06d", secureRandom.nextInt(1000000));
+        redisTemplate.opsForValue().set( otp, id.toString(), OTP_TTL);
+        emailService.sendOtpEmail(
+                user.getEmail(),
+                otp,
+                user.getFirstName()
+        );
+        log.info("Password reset OTP email sent successfully to user: {}", user.getEmail());
+
+        return ResponseEntity.ok(Map.of(
+                "message", "Password reset initiated",
+                "otp", otp
+        ));
+
+    }
+
+    @PutMapping(path = "/complete-password-reset")
+    public ResponseEntity<?> completePasswordReset(@RequestBody CompletePasswordResetDto completePasswordResetDto){
+        return ResponseEntity.ok(authenticationService.completePasswordReset(completePasswordResetDto));
     }
 
 }

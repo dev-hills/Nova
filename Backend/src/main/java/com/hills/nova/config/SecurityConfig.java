@@ -42,6 +42,7 @@ public class SecurityConfig {
         http
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/**").permitAll()
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/test-brevo-email").permitAll()
                         .requestMatchers( "/swagger-ui/**",
                                 "/v3/api-docs/**",

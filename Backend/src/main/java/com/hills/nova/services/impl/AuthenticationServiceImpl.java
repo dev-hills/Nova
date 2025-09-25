@@ -1,5 +1,6 @@
 package com.hills.nova.services.impl;
 
+import com.hills.nova.domain.dtos.CompletePasswordResetDto;
 import com.hills.nova.domain.dtos.SignupRequestDto;
 import com.hills.nova.domain.entities.User;
 import com.hills.nova.exceptions.UserAlreadyExistsException;
@@ -12,6 +13,7 @@ import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -29,6 +31,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final UserDetailsService userDetailsService;
+    private final RedisTemplate<String, Object> redisTemplate;
 
     @Value("${jwt.secret}")
     private String secretKey;
@@ -105,6 +108,36 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         return userDetailsService.loadUserByUsername(username);
     }
 
+    @Override
+    public String completePasswordReset(CompletePasswordResetDto completePasswordResetDto) {
+        Object storedValue = redisTemplate.opsForValue().get(completePasswordResetDto.getOtp());
+
+        if (storedValue == null) {
+            throw new RuntimeException("OTP not found or has expired");
+        }
+
+        UUID storedUserId = UUID.fromString(storedValue.toString());
+
+        if (!storedUserId.equals(completePasswordResetDto.getId())) {
+            throw new RuntimeException("OTP does not belong to this user");
+        }
+
+        String hashedPassword = passwordEncoder.encode(completePasswordResetDto.getPassword());
+
+        User user = userRepository.findById(completePasswordResetDto.getId()).orElseThrow(
+                () -> new RuntimeException("User not found")
+        );
+
+        user.setPassword(hashedPassword);
+
+        userRepository.save(user);
+
+        redisTemplate.delete(completePasswordResetDto.getOtp());
+
+        return "Password reset successful";
+
+    }
+
     private String extractUsername(String token) {
         Claims claims = Jwts.parserBuilder()
                 .setSigningKey(getSigninKey())
@@ -119,3 +152,4 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         return Keys.hmacShaKeyFor(keyBytes);
     }
 }
+

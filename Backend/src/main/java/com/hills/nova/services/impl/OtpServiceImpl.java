@@ -67,7 +67,7 @@ public class OtpServiceImpl implements OtpService {
 
     @Override
     public String resendOtp(UUID userId) {
-        if (!canResendOtp(userId)) {
+        if (canResendOtp(userId)) {
             throw new RuntimeException("Please wait before requesting a new OTP");
         }
 
@@ -91,7 +91,7 @@ public class OtpServiceImpl implements OtpService {
 
     @Override
     public boolean canResendOtp(UUID userId) {
-        return !redisTemplate.hasKey(RESEND_KEY_PREFIX + userId);
+        return redisTemplate.hasKey(RESEND_KEY_PREFIX + userId);
     }
 
     private void deleteExistingUserOtp(UUID userId) {
