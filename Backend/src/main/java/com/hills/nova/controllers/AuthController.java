@@ -36,31 +36,8 @@ public class AuthController {
 
     @PostMapping(path = "/sign-up")
     public ResponseEntity<SignupResponseDto> signUp(@Valid @RequestBody SignupRequestDto signupRequestDto) {
-        UserDetails userDetails = authenticationService.signup(signupRequestDto);
-        NovaUserDetails novaUserDetails = (NovaUserDetails) userDetails;
-
-        String otp = otpService.generateOtpAndStoreOtp(novaUserDetails.getId());
-
-        try {
-            emailService.sendOtpEmail(
-                    novaUserDetails.getUser().getEmail(),
-                    otp,
-                    novaUserDetails.getUser().getFirstName()
-            );
-            log.info("OTP email sent successfully to user: {}", novaUserDetails.getUser().getEmail());
-        } catch (Exception e) {
-            log.error("Failed to send OTP email to user: {}", novaUserDetails.getUser().getEmail(), e);
-        }
-
-        SignupResponseDto signupResponseDto = SignupResponseDto.builder()
-                .id(novaUserDetails.getId())
-                .email(novaUserDetails.getUser().getEmail())
-                .message("Account created successfully. Please check your email for the verification code.")
-                .createdAt(novaUserDetails.getUser().getCreatedAt())
-                .otp(otp)
-                .build();
-
-        return new ResponseEntity<>(signupResponseDto, HttpStatus.CREATED);
+        SignupResponseDto response = authenticationService.signup(signupRequestDto);
+        return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
     @PostMapping(path = "/verify-otp")

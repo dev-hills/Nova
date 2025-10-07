@@ -12,6 +12,8 @@ import org.springframework.stereotype.Service;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 
+import java.util.concurrent.CompletableFuture;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -50,10 +52,12 @@ public class EmailServiceImpl implements EmailService {
             // Send email
             mailSender.send(message);
             log.info("OTP email sent successfully to: {}", toEmail);
+            CompletableFuture.completedFuture(null);
 
         } catch (MessagingException e) {
             log.error("Failed to send OTP email to: {}", toEmail, e);
             throw new RuntimeException("Failed to send OTP email", e);
+
         }
     }
 
