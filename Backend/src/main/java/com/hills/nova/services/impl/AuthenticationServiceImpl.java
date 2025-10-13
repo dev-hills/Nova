@@ -1,9 +1,12 @@
 package com.hills.nova.services.impl;
 
 import com.hills.nova.domain.dtos.CompletePasswordResetDto;
+import com.hills.nova.domain.dtos.LoginResponse;
 import com.hills.nova.domain.dtos.SignupRequestDto;
 import com.hills.nova.domain.dtos.SignupResponseDto;
 import com.hills.nova.domain.entities.User;
+import com.hills.nova.exceptions.OtpNotFoundException;
+import com.hills.nova.exceptions.TooManyRequestsException;
 import com.hills.nova.exceptions.UserAlreadyExistsException;
 import com.hills.nova.repositories.UserRepository;
 import com.hills.nova.security.NovaUserDetails;
@@ -26,6 +29,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.security.Key;
+import java.security.SecureRandom;
+import java.time.Duration;
 import java.util.*;
 
 @Slf4j
@@ -39,6 +44,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     private final RedisTemplate<String, Object> redisTemplate;
     private final OtpService otpService;
     private final EmailService emailService;
+    private static final SecureRandom secureRandom = new SecureRandom();
 
     @Value("${jwt.secret}")
     private String secretKey;
@@ -80,15 +86,27 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     }
 
     @Override
-    public UserDetails authenticate(String email, String password) {
+    public LoginResponse signin(String email, String password) {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(email, password)
         );
-        return userDetailsService.loadUserByUsername(email);
+        UserDetails user = userDetailsService.loadUserByUsername(email);
+        String accessToken  = generateAccessToken(user);
+        String refreshToken = generateRefreshToken(user);
+         return LoginResponse.builder()
+                 .message("Login successful")
+                 .token(
+                         LoginResponse.Token.builder()
+                                 .accessToken(accessToken)
+                                 .refreshToken(refreshToken)
+                                 .build()
+                 )
+                 .build();
     }
 
     @Override
-    public void verifyUser(UUID userId) {
+    public String verifyUser(String otp) {
+        UUID userId = otpService.verifyOtp(otp);
         User user = userRepository.findById(userId).orElseThrow(
                 () ->  new RuntimeException("User not found with ID: " + userId)
         );
@@ -99,7 +117,69 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
         user.setIsVerified(true);
         userRepository.save(user);
+        return "Verification successful";
+    }
 
+    @Override
+    public LoginResponse refreshToken(String token) {
+        UserDetails user = validateToken(token);
+        String accessToken = generateAccessToken(user);
+        String refreshToken = generateRefreshToken(user);
+
+        return  LoginResponse.builder()
+                .message("Token refreshed successfully")
+                .token(LoginResponse.Token.builder()
+                        .accessToken(accessToken)
+                        .refreshToken(refreshToken)
+                        .build())
+                .build();
+    }
+
+    @Override
+    public Map<String, Object> resendOtp(UUID id) {
+        User user = userRepository.findById(id).orElseThrow(
+                () -> new RuntimeException("User not found")
+        );
+
+        if (otpService.canResendOtp(id)) {
+            throw new TooManyRequestsException("Please wait before requesting a new OTP");
+        }
+
+        String otp = otpService.resendOtp(id);
+
+        emailService.sendOtpEmail(
+                user.getEmail(),
+                otp,
+                user.getFirstName()
+        );
+        log.info("OTP email resent successfully to user: {}", user.getEmail());
+
+        return Map.of(
+                "message", "OTP resent successfully",
+                "otp", otp,
+                "canResendAgainIn", "60 seconds"
+        );
+
+    }
+
+    @Override
+    public Map<String, Object> initiatePasswordReset(UUID id) {
+        User user = userRepository.findById(id).orElseThrow(
+                () -> new RuntimeException("User not found")
+        );
+        String otp = otpService.generateOtp();
+        redisTemplate.opsForValue().set( otp, id.toString(), Duration.ofMinutes(30));
+        emailService.sendOtpEmail(
+                user.getEmail(),
+                otp,
+                user.getFirstName()
+        );
+        log.info("Password reset OTP email sent successfully to user: {}", user.getEmail());
+
+        return Map.of(
+                "message", "Password reset initiated",
+                "otp", otp
+        );
     }
 
     @Override
@@ -137,13 +217,13 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         Object storedValue = redisTemplate.opsForValue().get(completePasswordResetDto.getOtp());
 
         if (storedValue == null) {
-            throw new RuntimeException("OTP not found or has expired");
+            throw new OtpNotFoundException("OTP not found or has expired");
         }
 
         UUID storedUserId = UUID.fromString(storedValue.toString());
 
         if (!storedUserId.equals(completePasswordResetDto.getId())) {
-            throw new RuntimeException("OTP does not belong to this user");
+            throw new OtpNotFoundException("OTP does not belong to this user");
         }
 
         String hashedPassword = passwordEncoder.encode(completePasswordResetDto.getPassword());

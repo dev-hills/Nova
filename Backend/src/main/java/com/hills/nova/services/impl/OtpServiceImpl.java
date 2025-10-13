@@ -1,6 +1,7 @@
 package com.hills.nova.services.impl;
 
 import com.hills.nova.domain.entities.User;
+import com.hills.nova.exceptions.OtpNotFoundException;
 import com.hills.nova.repositories.UserRepository;
 import com.hills.nova.services.OtpService;
 import lombok.RequiredArgsConstructor;
@@ -47,7 +48,7 @@ public class OtpServiceImpl implements OtpService {
         log.info("Stored value: {}", storedValue);
 
         if (storedValue == null) {
-            throw new RuntimeException("OTP not found or has expired");
+            throw new OtpNotFoundException("OTP not found or has expired");
         }
 
         try{
@@ -92,6 +93,11 @@ public class OtpServiceImpl implements OtpService {
     @Override
     public boolean canResendOtp(UUID userId) {
         return redisTemplate.hasKey(RESEND_KEY_PREFIX + userId);
+    }
+
+    @Override
+    public String generateOtp() {
+        return String.format("%06d", secureRandom.nextInt(1000000));
     }
 
     private void deleteExistingUserOtp(UUID userId) {
